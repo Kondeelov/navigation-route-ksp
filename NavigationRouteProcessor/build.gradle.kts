@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     `maven-publish`
     id("java-library")
@@ -18,16 +20,21 @@ publishing {
     repositories {
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/OWNER/REPOSITORY")
+            url = uri("https://maven.pkg.github.com/kondeelov/navigation-route-ksp")
             credentials {
-                username = project.findProperty("gpr.user") as String? ?: System.getenv("USERNAME")
-                password = project.findProperty("gpr.key") as String? ?: System.getenv("TOKEN")
+                val properties = Properties()
+                properties.load(rootProject.file("signing.properties").inputStream())
+                username = properties.getProperty("github_packages_username")
+                password = properties.getProperty("github_packages_password")
             }
         }
     }
     publications {
         register<MavenPublication>("gpr") {
             from(components["java"])
+            groupId = "com.kondee.navigationrouteprocessor"
+            artifactId = "navigation-route-ksp"
+            version = "0.0.2"
         }
     }
 }

@@ -63,20 +63,22 @@ class NavigationScreenVisitor(
             file += "import com.kondee.navigationrouteprocessor.Defaults"
             file.newLine(2)
             file += "class $fileName("
-            file.newLine()
 
-            annotatedParameter.forEach {
-                val typeResolved = it.type.resolve()
-                val typeString = typeResolved.declaration.qualifiedName
-                val nameString = it.name?.asString() ?: ""
-                val isNullable = typeResolved.nullability == Nullability.NULLABLE
-                val nullableProperty = if (isNullable) "?" else ""
-                if (!isNullable) {
-                    mandatoryFields[nameString] = typeString
-                    file += "\tprivate val $nameString: ${typeString?.asString()}$nullableProperty,"
-                    file.newLine()
-                } else {
-                    optionalFields[nameString] = typeString
+            if (annotatedParameter.isNotEmpty()) {
+                file.newLine()
+                annotatedParameter.forEach {
+                    val typeResolved = it.type.resolve()
+                    val typeString = typeResolved.declaration.qualifiedName
+                    val nameString = it.name?.asString() ?: ""
+                    val isNullable = typeResolved.nullability == Nullability.NULLABLE
+                    val nullableProperty = if (isNullable) "?" else ""
+                    if (!isNullable) {
+                        mandatoryFields[nameString] = typeString
+                        file += "\tprivate val $nameString: ${typeString?.asString()}$nullableProperty,"
+                        file.newLine()
+                    } else {
+                        optionalFields[nameString] = typeString
+                    }
                 }
             }
 
@@ -104,7 +106,7 @@ class NavigationScreenVisitor(
 
             generateNavigationArgumentsWithExtension(file, mandatoryFields, optionalFields, functionName)
 
-            generateEncodeDecodeFunction(file)
+            generateEncodeDecodeFunction(file, mandatoryFields, optionalFields)
         }
     }
 
@@ -114,6 +116,9 @@ class NavigationScreenVisitor(
         mandatoryFields: MutableMap<String, KSName?>,
         optionalFields: MutableMap<String, KSName?>
     ) {
+
+        if (mandatoryFields.isEmpty() && optionalFields.isEmpty()) return
+
         file += "\tfun getNavigationWithArgs(): String {"
         file.newLine()
 
@@ -131,10 +136,12 @@ class NavigationScreenVisitor(
 
             append("\")")
 
-            appendLine()
-            appendLine()
 
             if (optionalFields.isNotEmpty()) {
+
+                appendLine()
+                appendLine()
+
                 append("\t\t\tvar queries: MutableList<String> = mutableListOf()")
 
                 appendLine()
@@ -196,10 +203,11 @@ class NavigationScreenVisitor(
 
             append("\")")
 
-            appendLine()
-            appendLine()
-
             if (optionalFields.isNotEmpty()) {
+
+                appendLine()
+                appendLine()
+
                 append("\t\t\t\tvar queries: MutableList<String> = mutableListOf()")
 
                 appendLine()
@@ -239,62 +247,68 @@ class NavigationScreenVisitor(
         optionalFields: MutableMap<String, KSName?>,
         functionName: String
     ) {
+
+        if (mandatoryFields.isEmpty() && optionalFields.isEmpty()) return
+
         file.newLine(2)
 
-        if (mandatoryFields.isNotEmpty() && optionalFields.isNotEmpty()) {
-
-            file += "data class ${functionName.replaceFirstChar { it.uppercase() }}Arguments("
+        file += "data class ${functionName.replaceFirstChar { it.uppercase() }}Arguments("
+        file.newLine()
+        mandatoryFields.forEach {
+            file += "\tval ${it.key}: ${it.value?.asString()},"
             file.newLine()
-            mandatoryFields.forEach {
-                file += "\tval ${it.key}: ${it.value?.asString()},"
-                file.newLine()
-            }
-            optionalFields.forEach {
-                file += "\tval ${it.key}: ${it.value?.asString()}?, "
-                file.newLine()
-            }
-            file += ")"
-
-            file.newLine(2)
-
-            file += "fun androidx.navigation.NavBackStackEntry.to${functionName.replaceFirstChar { it.uppercase() }}Arguments(): ${functionName.replaceFirstChar { it.uppercase() }}Arguments {"
-            file.newLine()
-
-            file += "\tval args = ${functionName.replaceFirstChar { it.uppercase() }}Arguments("
-            file.newLine()
-            mandatoryFields.forEach {
-                file += "\t\t${it.key} = decode(this.arguments?.getString(\"${it.key}\")"
-                if (it.value?.getShortName() != "String") {
-                    file += ")"
-                    file += "?.to${it.value?.getShortName()}OrNull()"
-                } else {
-                    file += ")"
-                }
-                file += " ?: Defaults.getDefaultValue(${it.value?.getShortName()}::class),"
-                file.newLine()
-            }
-            optionalFields.forEach {
-                file += "\t\t${it.key} = decode(this.arguments?.getString(\"${it.key}\")"
-                if (it.value?.getShortName() != "String") {
-                    file += ")"
-                    file += "?.to${it.value?.getShortName()}OrNull()"
-                } else {
-                    file += ")"
-                }
-                file += ","
-                file.newLine()
-            }
-            file += "\t)"
-            file.newLine()
-
-            file += "\treturn args"
-
-            file.newLine()
-            file += "}"
         }
+        optionalFields.forEach {
+            file += "\tval ${it.key}: ${it.value?.asString()}?, "
+            file.newLine()
+        }
+        file += ")"
+
+        file.newLine(2)
+
+        file += "fun androidx.navigation.NavBackStackEntry.to${functionName.replaceFirstChar { it.uppercase() }}Arguments(): ${functionName.replaceFirstChar { it.uppercase() }}Arguments {"
+        file.newLine()
+
+        file += "\tval args = ${functionName.replaceFirstChar { it.uppercase() }}Arguments("
+        file.newLine()
+        mandatoryFields.forEach {
+            file += "\t\t${it.key} = decode(this.arguments?.getString(\"${it.key}\")"
+            if (it.value?.getShortName() != "String") {
+                file += ")"
+                file += "?.to${it.value?.getShortName()}OrNull()"
+            } else {
+                file += ")"
+            }
+            file += " ?: Defaults.getDefaultValue(${it.value?.getShortName()}::class),"
+            file.newLine()
+        }
+        optionalFields.forEach {
+            file += "\t\t${it.key} = decode(this.arguments?.getString(\"${it.key}\")"
+            if (it.value?.getShortName() != "String") {
+                file += ")"
+                file += "?.to${it.value?.getShortName()}OrNull()"
+            } else {
+                file += ")"
+            }
+            file += ","
+            file.newLine()
+        }
+        file += "\t)"
+        file.newLine()
+
+        file += "\treturn args"
+
+        file.newLine()
+        file += "}"
     }
 
-    private fun generateEncodeDecodeFunction(file: OutputStream) {
+    private fun generateEncodeDecodeFunction(
+        file: OutputStream,
+        mandatoryFields: MutableMap<String, KSName?>,
+        optionalFields: MutableMap<String, KSName?>,
+    ) {
+
+        if (mandatoryFields.isEmpty() && optionalFields.isEmpty()) return
 
         file.newLine()
 

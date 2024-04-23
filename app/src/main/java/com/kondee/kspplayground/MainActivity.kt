@@ -33,12 +33,7 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val navController = rememberNavController()
 
-                    val greetingScreenRoute = GreetingScreenRoute(name = "Kondee").apply {
-                        setAge(30)
-                        setEmail("kondeezaa@gmail.com")
-                    }
-
-                    val startDestination = greetingScreenRoute.getNavigationWithArgs()
+                    val startDestination = GreetingScreenRoute.getRoute()
                     NavHost(
                         navController = navController,
                         route = "main",
@@ -50,13 +45,9 @@ class MainActivity : ComponentActivity() {
                             arguments = listOf(
                                 androidx.navigation.navArgument("name") {
                                     defaultValue = "Hello #2"
-                                },
-                                androidx.navigation.navArgument("email") {
-                                    defaultValue = "kondeezaa@gmail.com #12"
                                 }
                             )
                         ) {
-//                            val greetingScreenArguments = it.toGreetingScreenArguments()
 
                             val name = it.arguments?.getString("name")
                             val age = it.arguments?.getInt("age")
@@ -101,11 +92,9 @@ class MainActivity : ComponentActivity() {
 @NavigationScreen(name = "greeting")
 fun GreetingScreen(
     modifier: Modifier = Modifier,
-    @NavigationArgument
+//    @NavigationArgument
     name: String,
-    @NavigationArgument
     age: Int? = null,
-    @NavigationArgument
     email: String? = null,
     onClick: () -> Unit = {}
 ) {
